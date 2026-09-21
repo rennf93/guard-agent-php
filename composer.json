@@ -1,0 +1,29 @@
+{
+    "name": "rennf93/guard-agent-php",
+    "description": "PHP telemetry agent for the guard-core ecosystem: buffers security events, metrics, and agent status locally and ships them to the Guard Core App ingestion API with at-least-once semantics",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": "^8.2",
+        "ext-json": "*",
+        "ext-curl": "*"
+    },
+    "suggest": {
+        "ext-redis": "Native phpredis client for crash-recovery persistence (optional; a dependency-free stream client is built in)",
+        "predis/predis": "Pure-PHP Redis client for crash-recovery persistence (optional; a dependency-free stream client is built in)"
+    },
+    "autoload": {
+        "psr-4": {
+            "RenzoFranceschini\\GuardAgent\\": "src/"
+        }
+    },
+    "scripts": {
+        "test": "php bin/test_agent.php",
+        "lint": "for f in $(find src bin -name '*.php'); do php -l \"$f\" > /dev/null || exit 1; done && echo LINT_OK"
+    },
+    "config": {
+        "platform": {
+            "php": "8.2.0"
+        }
+    }
+}
