@@ -1106,7 +1106,7 @@ $t->section('integration smoke (mock ingestion API)');
 $secret = 'it-signing-secret';
 $baseOverrides = [
     'endpoint' => "http://127.0.0.1:{$port}",
-    'apiKey' => 'live-api-key-0001',
+    'apiKey' => 'test-api-key-123',
     'projectId' => 'proj-smoke',
     'payloadSigningSecret' => $secret,
     'installId' => 'install-smoke-1',
@@ -1131,7 +1131,7 @@ $t->same(1, count($records), 'smoke: both events in a single request');
 $record = $records[0] ?? [];
 $t->same(200, $record['status'] ?? null, 'smoke: request accepted');
 $t->same('gzip', $record['content_encoding'] ?? null, 'smoke: body gzipped above the threshold');
-$t->same('live-api-key-0001', $record['x_api_key'] ?? null, 'smoke: X-API-Key header sent');
+$t->same('test-api-key-123', $record['x_api_key'] ?? null, 'smoke: X-API-Key header sent');
 $t->same('proj-smoke', $record['x_project_id'] ?? null, 'smoke: X-Project-Id header sent');
 $t->same('install-smoke-1', $record['x_agent_install_id'] ?? null, 'smoke: X-Agent-Install-Id header sent');
 $t->same(Version::USER_AGENT, $record['user_agent'] ?? null, 'smoke: User-Agent header sent');
