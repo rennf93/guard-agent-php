@@ -128,6 +128,32 @@ final class SilentLogger implements AgentLogger
 }
 
 /**
+ * Recording logger double for log-content assertions.
+ */
+final class CaptureLogger implements AgentLogger
+{
+    /** @var list<string> */
+    public array $warnings = [];
+
+    public function debug(string $message): void
+    {
+    }
+
+    public function info(string $message): void
+    {
+    }
+
+    public function warning(string $message): void
+    {
+        $this->warnings[] = $message;
+    }
+
+    public function error(string $message): void
+    {
+    }
+}
+
+/**
  * In-memory Redis double for handshake tests: records TTLs and deletions.
  */
 final class FakeRedisClient implements RedisClientInterface
@@ -892,6 +918,27 @@ $t->same(2, $agent->buffer->getBufferSize(), 'partial failure requeues all items
 refl($agent, 'eventsRetryAfter')->setValue($agent, 0.0);
 $agent->flushBuffer();
 $t->same(2, $agent->eventsSent, 'retry after a partial failure delivers the whole batch');
+
+// The partial-failure warning must describe where unsent items actually wait:
+// memory only without Redis, memory plus Redis with a Redis handler attached.
+$logger = new CaptureLogger();
+$transport = new RecordingTransport();
+$agent = makeAgent(['flushInterval' => 30, 'logger' => $logger], $transport);
+$agent->sendEvent(makeEvent(['event_type' => 'a']));
+$transport->eventOutcomes = [false];
+$agent->flushBuffer();
+$t->same(1, count($logger->warnings), 'first flush failure logs one warning');
+$t->ok(str_contains($logger->warnings[0] ?? '', 'requeued in memory (events) for retry'), 'warning without Redis says memory only');
+$t->ok(!str_contains($logger->warnings[0] ?? '', 'retained in Redis'), 'warning without Redis does not claim Redis retention');
+
+$logger = new CaptureLogger();
+$transport = new RecordingTransport();
+$agent = makeAgent(['flushInterval' => 30, 'logger' => $logger], $transport);
+$agent->initializeRedis(new RedisHandler(new FakeRedisClient(), 'gatest', new SilentLogger()));
+$agent->sendEvent(makeEvent(['event_type' => 'a']));
+$transport->eventOutcomes = [false];
+$agent->flushBuffer();
+$t->ok(str_contains($logger->warnings[0] ?? '', 'requeued in memory and retained in Redis (events) for retry'), 'warning with Redis mentions Redis retention');
 
 // Per-kind isolation: events fail, metrics succeed.
 $transport = new RecordingTransport();

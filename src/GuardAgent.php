@@ -419,6 +419,21 @@ final class GuardAgent
     }
 
     /**
+     * Describe where unsent items wait for retry, based on whether a Redis
+     * handler is attached to the buffer. Without Redis the items live only in
+     * the in-memory buffer, so claiming Redis retention would be misleading
+     * (mirrors Python _client_flush.FlushMixin._retention_description).
+     */
+    private function retentionDescription(string $kind): string
+    {
+        $hasRedis = $this->buffer->redisHandler() !== null;
+        $memoryPart = 'requeued in memory';
+        $redisPart = $hasRedis ? ' and retained in Redis' : '';
+
+        return $memoryPart . $redisPart . ' (' . $kind . ')';
+    }
+
+    /**
      * Flush events with per-kind failure streaks and backoff, mirroring
      * _flush_events. On failure the batch is requeued in memory, its Redis
      * keys retained, and a per-kind gate enforced before the next attempt. A
@@ -474,7 +489,8 @@ final class GuardAgent
         $this->eventsRetryAfter = microtime(true) + $delay;
         if ($this->eventsFailureStreak === 1) {
             $this->logger->warning(
-                'Failed to send ' . count($events) . ' events; requeued in memory and retained in Redis for retry; ' .
+                'Failed to send ' . count($events) . ' events; ' .
+                $this->retentionDescription('events') . ' for retry; ' .
                 sprintf('backing off up to %.0fs between attempts', $delay)
             );
         }
@@ -537,7 +553,8 @@ final class GuardAgent
         $this->metricsRetryAfter = microtime(true) + $delay;
         if ($this->metricsFailureStreak === 1) {
             $this->logger->warning(
-                'Failed to send ' . count($metrics) . ' metrics; requeued in memory and retained in Redis for retry; ' .
+                'Failed to send ' . count($metrics) . ' metrics; ' .
+                $this->retentionDescription('metrics') . ' for retry; ' .
                 sprintf('backing off up to %.0fs between attempts', $delay)
             );
         }
