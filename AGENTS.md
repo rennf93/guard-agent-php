@@ -36,10 +36,22 @@ All of `src/`, namespace `RenzoFranceschini\GuardAgent`:
 - `Log/AgentLogger.php` interface + `Log/DefaultAgentLogger.php` (streams in CLI SAPI, `error_log` in web SAPI; `GUARD_AGENT_DEBUG` enables debug).
 - `Utils/`: `Json` (Python-json.dumps-compatible bytes: unescaped slashes, escaped non-ASCII; `SerializationException`), `Backoff` (`base * 2^attempt` capped), `RetryAfter`, `BatchId`, `Uuid` (v4 without ext-uuid), `HeadersRedactor` (recursive `[REDACTED]` with a JSON-string scan, depth cap 10), `ResponseSummary`, `ErrorHook` (stages `transport_send` / `flush_events` / `flush_metrics`; a throwing hook is caught and logged).
 - `Exception/`: `GuardAgentException` base with `ConfigException`, `BufferFullException`, `InvalidEventException`, `SerializationException`, `RateLimitedException` (carries `retryAfterSeconds`), `PermanentClientException` (400/404/422; `statusCode` + `detail`), `PayloadTooLargeException` (413, extends PermanentClientException, so both are circuit-breaker exempt), `RedisException`.
+- `examples/basic_usage/`: minimal wiring demonstration (engine `onBlock` payload to `SecurityEvent`, agent from env, host-driven `tick()` loop, final flush on shutdown; `basic_usage.php` + `README.md`).
+- `mkdocs.yml`: mkdocs-material site definition (docs/ sources).
+- `docs/`: documentation site sources: `index.md`, `usage.md`, `configuration.md`.
 
 Runtime model (deliberate PHP deviation, documented in the README): PHP has no background threads, so the flush and status loops of the Python/TS/Go agents are host-driven. `start()` only marks the agent running, loads crash-recovery state, and initializes the transport. `tick()` is the loop body: it flushes when the high-watermark or flush interval triggers and pushes a status report when the status interval elapses. Long-running workers call `tick()` from their own loop (pcntl-free, no signal handlers); request-scoped apps call `flushBuffer()` from `kernel.terminate` / `register_shutdown_function`. Under the `block` overflow policy the buffer invokes the agent's flush inline while waiting (the one opt-in exception to failure isolation), because in single-threaded PHP nothing else can free the space.
 
 Dropped relative to the Python agent (consistent with the TS and Go ports): `project_encryption_key` and the `/api/v1/rules` dynamic-rules loop.
+
+Key invariants an agent must preserve when editing:
+
+1. The handshake is always drain, then send, then confirm (delete persisted records) or requeue at the FRONT in the original order; under buffer pressure during requeue the TAIL (newest items) is evicted and its records confirmed.
+2. The HMAC signature covers the UNCOMPRESSED JSON body even when the wire bytes are gzipped; the server verifies after decompression. Any change here must update the pinned HMAC vector and the mock server together.
+3. The host-facing methods (`sendEvent`, `sendMetric`, `flushBuffer`, `tick`, `getStatus`, `getStats`, `healthCheck`, `stop`) never throw into the host path; every failure is a log line plus a counter. Only `start()` may throw.
+4. Per-kind state (queues, failure streaks, backoff gates) stays independent: one kind failing must never stall the other.
+5. Redis failures are fail-open: log, count, keep going (plus the 30s write cooldown after 3 consecutive write failures).
+6. Community workflows (`issue-link`, `stale`, `sync-labels`) stay byte-identical to the Go family's (gin-guard and siblings); `greetings`, `summary`, and `labeler`/`labels` carry repo-specific text (agent subsystems, not adapter middleware) and must not drift in structure.
 
 ## Quick Start
 
@@ -99,8 +111,9 @@ Every field except `apiKey` is optional; `AgentConfigResolver::resolve()` fills 
 | Command | What it runs |
 | --- | --- |
 | `composer test` | `php bin/test_agent.php` |
-| `composer lint` | `for f in $(find src bin -name '*.php'); do php -l "$f" > /dev/null \|\| exit 1; done && echo LINT_OK` |
+| `composer lint` | `for f in $(find src bin -name '*.php'); do php -l "$f" > /dev/null \|\| exit 1; done && echo LINT_OK` (example files are linted with `php -l` directly) |
 | `composer validate --strict` | composer.json hygiene (no version field, valid schema) |
+| `pip install mkdocs-material && mkdocs build --strict` | Build the documentation site (CI deploys it on `main`) |
 
 Docker equivalents are in Quick Start. There is no Makefile (the sibling PHP repos do not use one either).
 
