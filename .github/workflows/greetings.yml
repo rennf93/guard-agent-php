@@ -1,0 +1,44 @@
+name: Greetings
+
+on: [pull_request_target, issues]
+
+permissions: {}
+
+jobs:
+  greeting:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+    - uses: actions/first-interaction@1c4688942c71f71d4f5502a26ea67c331730fa4d # v3.1.0
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        issue_message: |
+            Thanks for opening your first issue on **guard-agent-php**!
+
+            To help us triage quickly, please make sure your report includes:
+            - A clear reproduction (a short PHP snippet or failing test runner output is ideal)
+            - Output of `php -v` (the agent supports PHP 8.2, 8.3, and 8.4) and your `composer.json` requires
+            - The agent version you depend on (pin a commit until the first tag) and which Redis persistence adapter you use, if any (built-in stream client, ext-redis, or predis)
+            - The ingestion API base URL and which endpoints you hit (events, metrics, status)
+
+            A few pointers:
+            - Scan [README.md](../blob/main/README.md) for usage guidance, and the guard-agent (Python) repository for the normative agent semantics.
+            - **Security vulnerability?** Do **not** open a public issue - please use GitHub's private vulnerability reporting. The agent handles API keys and HMAC signing secrets.
+
+            Thanks again - a maintainer will be with you soon.
+        pr_message: |
+            Thanks for opening your first pull request on **guard-agent-php**!
+
+            Quick checklist before review (most of these are enforced by CI, but worth a glance):
+            - [ ] The PR body says `Closes #N` for an open issue (the `issue-link` check enforces it); chores take the `no-issue` label
+            - [ ] The `php -l` sweep over `src` and `bin` reports nothing (`composer lint`)
+            - [ ] `php bin/test_agent.php` passes (with `REDIS_HOST` set for the full suite, `REDIS_HOST=0` for unit-only)
+            - [ ] `composer validate --strict` is clean
+            - [ ] The host-facing methods stay never-throwing: new failure modes are logged and counted, not raised
+            - [ ] If you changed transport, compression, or signing behavior, it stays aligned with the ingestion contract (HMAC over the uncompressed body, verified post-decompression server-side) and the pinned HMAC vector in `bin/test_agent.php`
+
+            See [README.md](../blob/main/README.md) for the agent contract and [AGENTS.md](../blob/main/AGENTS.md) for the boundary rules.
+
+            Welcome aboard - a maintainer will review shortly.

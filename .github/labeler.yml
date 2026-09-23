@@ -1,0 +1,65 @@
+"area: core":
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/GuardAgent.php
+          - src/Config/**
+          - src/EventBuffer/**
+          - src/Version.php
+
+"area: transport":
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/Transport/**
+
+"area: persistence":
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/Persistence/**
+          - src/Install/**
+
+"area: models":
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/Model/**
+          - src/Log/**
+          - src/Exception/**
+          - src/Utils/**
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'bin/test_*.php'
+          - tests/**
+
+examples:
+  - changed-files:
+      - any-glob-to-any-file:
+          - examples/**
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - docs/**
+          - mkdocs.yml
+          - README.md
+          - AGENTS.md
+          - CLAUDE.md
+          - src/.agents/**
+          - LICENSE
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/**
+
+build:
+  - changed-files:
+      - any-glob-to-any-file:
+          - composer.json
+          - composer.lock
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - composer.json
+          - composer.lock
